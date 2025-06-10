@@ -1,3 +1,15 @@
+local function getShapeBackground(color, radius, strokeWidth, strokeColor)
+    local drawable = luajava.new(GradientDrawable)
+    drawable.setShape(GradientDrawable.RECTANGLE)
+    drawable.setColor(color)
+    drawable.setCornerRadii({radius, radius, radius, radius, radius, radius, radius, radius})
+    if strokeWidth and strokeColor then
+        drawable.setStroke(strokeWidth, strokeColor)
+    end
+    return drawable
+end
+
+
 function CreateMenu(arr, func, menuType, menuItems)
     if type(arr) ~= 'table' then
         return error('The parameter must be of table type')
