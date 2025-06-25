@@ -1,0 +1,3219 @@
+-- ❏━━━━━━━━━━━━━━❒ -- START -- ❏━━━━━━━━━━━━━━❒ -- 
+gg.setVisible(false)
+gg.setRanges(gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS)
+local imports = {
+    "android.*",
+    "android.app.*",
+    "android.content.*",
+    "android.graphics.*",
+    "android.graphics.drawable.*",
+    "android.net.Uri",
+    "android.provider.Settings",
+    "android.os.*",
+    "android.view.*",
+    "android.widget.*",
+    "android.ext.*",
+    "android.text.Html",
+    "android.graphics.PorterDuffColorFilter",
+    "android.graphics.PorterDuff",
+    "android.os.Handler",
+    "android.os.Looper",
+    "android.content.res.ColorStateList",
+    "android.widget.AdapterView$OnItemSelectedListener",
+    "android.widget.CompoundButton$OnCheckedChangeListener",
+    "android.widget.ArrayAdapter",
+    "android.graphics.drawable.GradientDrawable",
+    "android.graphics.drawable.ClipDrawable",
+    "android.view.Gravity",
+    "android.view.animation.*",
+    "android.animation.ObjectAnimator",
+    "com.ldoublem.loadingviewlib.view.*",
+    "com.ldoublem.loadingviewlib.view.base.LVBase",
+    "com.ldoublem.loadingviewlib.LVCircularCD",
+    "com.ldoublem.loadingviewlib.view.LVCircularRing",
+    "com.ldoublem.loadingviewlib.view.LVBlock",
+    "com.romainpiel.shimmer.*",
+    "java.io.File",
+    "java.lang.*",
+    "java.util.*"
+}
+
+for _, lib in ipairs(imports) do
+    import(lib)
+end
+
+toast.setGravity(Gravity.BOTTOM)
+toast.setMode(1)
+
+-- apps
+info = gg.getTargetInfo()
+get_label = info.label -- Get label name
+get_vers = info.versionName -- Get Version App
+get_pkgs = info.packageName -- Get Package Name
+
+-- TARGET APP
+targetApk = get_label
+targetPkg = "com.asobimo.toramonline"
+
+-- HEADER
+header_top_left = get_label
+
+-- About
+telegram="mizuki3101"
+
+main_bg_color=0xff170d13
+color_accent1=0xFFff5c98
+color_accent2=0xff005f6b
+
+--- button
+button_text=0xffffffff
+button_text_on=0xFF6bff9a
+button_text_off=0xFFFF6B6B
+button_color=0xFF333333
+button_color_on=0xff255736
+button_color_off=0xff57252c
+button_color_off2=0x90333333
+button_stroke_color_on = 0xff307346
+button_stroke_color_off = 0xff733030
+button_stroke_color_off2 = 0x90434a5e
+
+-- checkbox
+checkbox_color_on=0xFFff5c98
+checkbox_color_off=0xff777777
+
+-- Top page button
+page_btn_color=0xff57252c
+page_btn_color2=0xff255736
+
+-- stroke
+stroke_color=0xff7a323c
+stroke_color2=0xff327a4a
+button_stroke_color = 0xff434a5e
+
+-- text
+text_color=0xffffffff
+text_color2=0x50ffffff
+reflection_color1=0xffFDB2CB
+reflection_color2=0xfffccd4a
+
+-- icon
+ic_minus = loadbitmap("https://img.icons8.com/external-others-inmotus-design/67/external-minus-buttons-others-inmotus-design.png")
+ic_close = loadbitmap("https://raw.githubusercontent.com/cabinz3q/assets/refs/heads/main/icons8-exit-67.png")
+ic_resize = loadbitmap("https://img.icons8.com/material-two-tone/48/resize.png")
+ic_ard = loadbitmap("https://img.icons8.com/ios-glyphs/30/sort-down.png")
+
+-- Misc
+local savedAddresses = {}
+local OldValue = {}
+local GamePath = gg.EXT_CACHE_DIR .. "/" .. get_pkgs
+file.mkdirs(GamePath)
+local offsetFilePath = GamePath .. "/offset.h"
+local land_width_path = GamePath .."/land_width"
+local land_height_path = GamePath.."/land_height"
+local port_width_path = GamePath.."/port_width"
+local port_height_path = GamePath.."/port_height"
+local font_size_path = GamePath.."/font_size"
+local setting_pref_path = GamePath.."/setting_pref"
+local menu_pref_path = GamePath.."/menu_pref.txt"
+
+
+local libpath = gg.getTargetInfo().nativeLibraryDir .. "/libil2cpp.so"
+local getranges = gg.getRangesList("libil2cpp.so")
+local v_true = -763363296
+local v_false = -763363328
+local v_ret = -698416192
+local v_nop = -721215457
+
+--[[
+
+-- Load il2cpp api if not loaded
+if not Il2cpp then
+    toast.white("Please wait...")
+    local content = gg.makeRequest('https://drive.usercontent.google.com/download?id=1kzqWWOYN6l2oKFwba3TdFuWT-VAHBSsW&export=download&authuser=0').content
+    local file = io.open('il2cppapi.lua', 'w+')
+    file:write(content)
+    file:close()
+    require('il2cppapi')
+    os.remove('il2cppapi.lua')
+    Il2cpp() -- Initialize Il2cpp
+end
+]]
+local function loadOffsetsFromFile()
+    local offsets = {}
+    local file = io.open(offsetFilePath, "r")
+    if not file then
+        return offsets
+    end
+
+    local content = file:read("*all")
+    file:close()
+
+    -- Parse file content (assuming format like: name = 0xOFFSET)
+    for line in content:gmatch("[^\r\n]+") do
+        local name, value = line:match("(%w+)%s*=%s*0x(%x+)")
+        if name and value then
+            offsets[name] = "0x" .. value
+        elseif line:match("VersionApk%s*=%s*(.+)") then
+            offsets["VersionApk"] = line:match("VersionApk%s*=%s*(.+)")
+        end
+    end
+
+    -- Dynamically assign each field to a local variable
+     for key, value in pairs(offsets) do
+        _G[key] = value -- Assign to global environment (use with caution)
+    end
+
+    return offsets
+end
+
+
+local function GetIl2CppMethod(name, clazz, method)
+    -- Load existing offsets
+    local offsets = loadOffsetsFromFile()
+
+    -- Check if version has changed
+    if offsets.VersionApk and offsets.VersionApk ~= get_vers then
+        -- Delete the offset file if version doesn't match
+        if file.exists(offsetFilePath) then
+            file.delete(offsetFilePath)
+            -- Reset offsets since file is deleted
+            offsets = { VersionApk = get_vers }
+        end
+    end
+
+    -- Update offsets table with new or existing offset
+    if not offsets[name] then
+        toast.white("Please wait..")
+        local search = Il2cpp.FindMethods({method})
+        if search and search[1] then
+            for k, v in ipairs(search[1]) do
+                if v.ClassName == clazz then
+                    offsets[name] = "0x" .. v.Offset
+                    _G[name] = offsets[name]
+                    break
+                end
+            end
+        else
+            return
+        end
+    end
+    
+    -- Check if version changed or offset is new, then update file
+    if offsets.VersionApk ~= get_vers or not offsets[name .. "_saved"] then
+        -- Mark this offset as saved
+        offsets[name .. "_saved"] = true
+        offsets.VersionApk = get_vers
+        
+        -- Ensure the parent directory exists
+        if not file.exists(offsetFilePath) then
+            file.create(offsetFilePath)
+        end
+
+        -- Prepare content with exact formatting
+        local content = string.format("-- %s\nVersionApk = %s\n", get_label, get_vers)
+        local offset_lines = {}
+        for key, value in pairs(offsets) do
+            if key ~= "VersionApk" and key:find("_saved$") == nil then
+                table.insert(offset_lines, string.format("%s = %s", key, value))
+            end
+        end
+        content = content .. "\n" .. table.concat(offset_lines, "\n")
+
+        -- Try writing directly to file if possible
+        local file_handle = io.open(offsetFilePath, "w")
+        if file_handle then
+            file_handle:write(content)
+            file_handle:close()
+        else
+            -- Fallback to shell command with proper escaping
+            local escaped_content = content:gsub('"', '\\"'):gsub('\n', '\\n')
+            local shellCommand = string.format('echo -e "%s" > "%s"', escaped_content, offsetFilePath)
+            os.execute("su -c " .. shellCommand)
+        end
+    end
+end
+
+local function rc(offset)
+    -- Convert hex string to number if needed
+    local numOffset = offset
+    if type(offset) == "string" then
+        numOffset = tonumber(offset, 16)
+    end
+    
+    -- Check if offset is already stored in OldValue
+    if OldValue[offset] then
+        return false -- Return false if offset is already recorded
+    end
+    
+    for i = 1, #getranges do
+        if getranges[i]["state"] == "Xa" then
+            local addr = getranges[2].start
+            local REV = gg.getValues((function(R)
+                for j = 0, 16, 4 do
+                    R[#R + 1] = {address = addr + numOffset + j, flags = 4}
+                end
+                return R
+            end)({}))
+            OldValue[offset] = REV
+            return true
+        end
+    end
+    
+    return false
+end
+
+local og = function (offset)
+    local originalValues = OldValue[offset]
+    if originalValues then
+        gg.setValues(originalValues)  -- Kembalikan ke nilai asli
+        gg.sleep(1000)
+    end
+end
+
+local msv = function(offset, flags, value, x) 
+    local vals={}; x = x or false
+    for i = 1, #getranges do
+        if getranges[i]["state"] == "Xa" then
+            local addr = x and offset or getranges[i]["start"] + offset
+            vals[1]={} 
+            vals[1].address=addr
+            vals[1].flags=flags
+            vals[1].value=value
+            gg.setValues(vals) 
+        end -- getrange
+    end -- loop
+end -- msv
+
+
+local asv = function(offset, type, value)
+    -- Convert string to number if needed
+    local numValue = tonumber(value) or value
+    
+    local vals
+    for i = 1, #getranges do
+        if getranges[i]["state"] == "Xa" then
+            local addr = getranges[i]["start"] + offset
+            if type == int or type == bool then
+                if numValue == 0 or numValue == false then
+                    vals = {
+                        {address = addr, flags = 4, value = -763363328},
+                        {address = addr + 0x4, flags = 4, value = -698416192}
+                    }
+                elseif numValue == 1 or numValue == true then
+                    vals = {
+                        {address = addr, flags = 4, value = -763363296},
+                        {address = addr + 0x4, flags = 4, value = -698416192}
+                    }
+                elseif numValue == nop then
+                    vals = {
+                        {address = addr, flags = 4, value = v_nop},
+                        {address = addr + 0x4, flags = 4, value = -698416192}
+                    }
+                elseif numValue <= 0xFFFF then
+                    vals = {
+                        {address = addr, flags = 4, value = string.format("~A8 MOV W0, #%d", numValue)},
+                        {address = addr + 0x4, flags = 4, value = "~A8 RET"}
+                    }
+                else
+                    vals = {
+                        {address = addr, flags = 4, value = string.format("~A8 MOV W0, #%d", numValue & 0xFFFF)},
+                        {address = addr + 0x4, flags = 4, value = string.format("~A8 MOVK W0, #%d, LSL #16", (numValue >> 16) & 0xFFFF)},
+                        {address = addr + 0x8, flags = 4, value = "~A8 RET"}
+                    }
+                end
+                gg.setValues(vals)
+                log("Applied value: " .. tostring(numValue) .. " to offset: " .. tostring(offset))
+            elseif type == float then
+                local MyValue = tonumber(numValue)
+                if not MyValue then 
+                    log("asv: Error: Invalid float value: " .. tostring(numValue))
+                    return 
+                end
+
+                local allocpage = gg.allocatePage(7)
+                if not allocpage then 
+                    log("asv: Error: Failed to allocate page.")
+                    return 
+                end
+
+                local Float = {{address = allocpage, flags = gg.TYPE_FLOAT, value = MyValue}}
+                gg.setValues(Float)
+                local CHECK = gg.getValues(Float)
+                if tostring(CHECK[1].value):match("inf") or tostring(CHECK[1].value):match("NaN") then
+                    log("asv: Error: Value is infinite or NaN.") 
+                    gg.setVisible(true) 
+                    os.exit()
+                end
+
+                local AP, o = {}, 0
+                for i = 1, 4 do
+                    AP[i], o = {address = allocpage + o, flags = gg.TYPE_WORD}, o + 2
+                end
+                gg.loadResults(AP)
+                local GET, HEX = gg.getResults(4), {}
+                for i, v in ipairs(GET) do HEX[i] = string.format("0x%X", math.abs(v.value)) end
+
+                local O_O = {
+                    {address = addr, flags = 4, value = HEX[1] == "0x0" and "h00008052" or "~A8 MOV W0, #" .. HEX[1]},
+                    {address = addr + 4, flags = 4, value = HEX[2] == "0x0" and "h0000A072" or "~A8 MOVK W0, #" .. HEX[2] .. ", LSL #16" },
+                    {address = addr + 8, flags = 4, value = "1E270000h" },
+                    {address = addr + 12, flags = 4, value = "hC0035FD6" }
+                }
+                gg.setValues(O_O)
+                gg.clearResults()
+                log("Applied float value: " .. tostring(MyValue) .. " to offset: " .. tostring(offset))
+            end -- type
+        end -- if getranges
+    end -- loop getranges
+end -- asv
+
+
+local function GetLibAddress(libname)
+    local startAddr, endAddr = nil;
+    local r = gg.getRangesList(libname)
+    for k, v in ipairs(r) do
+        if v.state == "Xa" then
+            if startAddr == nil then
+                startAddr = v.start
+            end
+            endAddr = v['end'];
+        end
+    end
+    return startAddr, endAddr
+end
+
+
+local addresses = {}
+
+-- Fungsi untuk menyimpan alamat ke tabel
+function saveAddress(key, address)
+    -- Pastikan key dan address valid
+    if not key or not address then
+       -- print("Error: Key or address is nil")
+        return
+    end
+    
+    -- Simpan alamat ke tabel global
+    addresses[key] = address
+    --print(string.format("Address saved: %s = 0x%X", key, address))
+end
+
+-- Fungsi untuk mengambil alamat dari tabel
+function getAddress(key)
+    -- Periksa apakah kunci ada di tabel
+    if addresses[key] then
+        return addresses[key]
+    else
+        --print("Error: Address for key '" .. key .. "' not found")
+        return nil
+    end
+end
+
+function getWallHack()
+  gg.clearResults()
+  gg.setRanges(gg.REGION_ANONYMOUS)
+  gg.searchNumber("9.0F;9.80000019073F;1D;1D::261", gg.TYPE_FLOAT, false, gg.SIGN_EQUAL, 0, -1)
+  gg.refineNumber("9.0", gg.TYPE_FLOAT, false, gg.SIGN_EQUAL, 0, -1)
+  if gg.getResultCount() == 2 then
+    local whr1 = gg.getResults(2)
+    saveAddress("wh1", whr1[2].address)
+    saveAddress("wh2", whr1[2].address)
+  else
+    local whr1 = gg.getResults(1)
+    saveAddress("wh1", whr1[1].address)
+  end
+  gg.setRanges(gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS)
+  gg.clearResults()
+end
+
+function setWallHack(enabled)
+
+local wh1 = getAddress("wh1")
+local wh2 = getAddress("wh2")
+  
+  if enabled then
+  
+    if wh1 then
+        msv(wh1 + 0x10, 4, 0, true) 
+        msv(wh1 + 0x104, 4, 65792, true) 
+    end
+
+    if wh2 then
+        msv(wh2 + 0x10, 4, 0, true) 
+        msv(wh2 + 0x104, 4, 65792, true) 
+    end
+    
+  else
+
+    if wh1 then
+        msv(wh1 + 0x10, 4, 1, true) 
+        msv(wh1 + 0x104, 4, 1, true) 
+    end
+
+    if wh2 then
+        msv(wh2 + 0x10, 4, 1, true) 
+        msv(wh2 + 0x104, 4, 1, true) 
+    end
+    
+  end
+end
+
+local startIl2cpp, endIl2cpp = GetLibAddress('libil2cpp.so');
+local startUnity, endUnity = GetLibAddress('libunity.so');
+local startXigncode, endXigncode = GetLibAddress('libxigncode.so');
+local startMain, endMain = GetLibAddress('libmain.so');
+
+local bypasser = function()
+
+PATH="/sdcard/Documents"
+os.execute("su -c mkdir -p " .. PATH)
+
+URL="https://raw.githubusercontent.com/cabinz3q/to/refs/heads/main/bp2.sh"
+file.download(URL, PATH.."/bypassT.sh")
+os.execute("su -c mkdir /data/local/tmp/toram")
+os.execute(string.format("su -c mv %s %s", PATH.."/bypassT.sh", "/data/local/tmp/toram/bypassT.sh"))
+
+local CMD = string.format([[
+    su -c nohup sh %s > %s 2>&1 &
+    sleep 0.1
+]], "/data/local/tmp/toram/bypassT.sh", "/data/local/tmp/toram/dev.log")
+
+-- Jalankan dan lanjutkan eksekusi Lua
+os.execute(CMD)
+
+end
+
+function bypasser2()
+    -- Helper: tulis nol dari base sampai offset tertentu, tiap 4 byte
+    local function zeroFill(base, size)
+        for offset = 0, size, 4 do
+            msv(base + offset, 4, 0, true)
+        end
+    end
+
+    -- Il2Cpp offset sampai 0x50
+    zeroFill(startIl2cpp, 0x40)
+
+    -- Unity
+    zeroFill(startUnity, 0x40)
+
+    -- Xigncode
+    zeroFill(startXigncode, 0x40)
+
+    -- Main
+    zeroFill(startMain, 0x40)
+end
+
+if get_pkgs ~= targetPkg then
+    toast.white("~ This script is for " .. targetApk)
+   -- os.exit()
+else
+    load_offset=gg.makeRequest("https://raw.githubusercontent.com/cabinz3q/to/refs/heads/main/off").content
+    pcall(load(load_offset))
+    toast.white("Please wait...")
+    bypasser()
+    whhh=gg.alert("Get Wallhack Addresss?", "YES", "NO")
+    if whhh == 1 then
+    getWallHack()
+    end
+end
+
+local Point = HotPoint.instance
+local Point_posX = FloatPanel.getDeclaredField("j").setAccessible(true)
+local Point_posY = FloatPanel.getDeclaredField("k").setAccessible(true)
+local Point_sizePx = HotPoint.getDeclaredMethod("getSizePx").setAccessible(true).invoke(Point).."px"
+local Point_alpha = FloatPanel.getDeclaredMethod("getLayoutAlpha").setAccessible(true).invoke(Point)
+local Point_mVanishingTime = HotPoint.getDeclaredMethod("getVanishingTime").setAccessible(true).invoke(Point)
+Point.f()
+local window = activity.getSystemService("window")
+local mObjectAnimator, dObjectAnimator
+
+local function sparkle_animation(view)
+    if not mObjectAnimator then
+        mObjectAnimator = ObjectAnimator.ofFloat(view, "alpha", 0, Point_alpha)
+        mObjectAnimator.setDuration(800)
+        mObjectAnimator.setInterpolator(DecelerateInterpolator())
+    end
+end
+
+local function sparkle_startanimation()
+    if mObjectAnimator then
+        mObjectAnimator.start()
+    end
+end
+
+local function getLayoutParams()
+    local LayoutParams = WindowManager.LayoutParams
+    local layoutParams = luajava.new(LayoutParams)
+    layoutParams.type = (Build.VERSION.SDK_INT >= 26) and LayoutParams.TYPE_APPLICATION_OVERLAY or LayoutParams.TYPE_PHONE
+    layoutParams.format = PixelFormat.RGBA_8888
+    layoutParams.flags = LayoutParams.FLAG_NOT_FOCUSABLE
+	layoutParams.gravity = Gravity.TOP | Gravity.LEFT
+    layoutParams.width = LayoutParams.WRAP_CONTENT
+    layoutParams.height = LayoutParams.WRAP_CONTENT
+    return layoutParams
+end
+
+local function getShapeBackground(color, radius, strokeWidth, strokeColor)
+    local drawable = luajava.new(GradientDrawable)
+    drawable.setShape(GradientDrawable.RECTANGLE)
+    drawable.setColor(color)
+    drawable.setCornerRadii({radius, radius, radius, radius, radius, radius, radius, radius})
+    if strokeWidth and strokeColor then
+        drawable.setStroke(strokeWidth, strokeColor)
+    end
+    return drawable
+end
+
+local function getShapeBackground2(color, topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius, strokeWidth, strokeColor)
+    local drawable = luajava.new(GradientDrawable)
+    drawable.setShape(GradientDrawable.RECTANGLE)
+    drawable.setColor(color)
+    -- Set individual corner radii: {topLeft, topLeft, topRight, topRight, bottomRight, bottomRight, bottomLeft, bottomLeft}
+    drawable.setCornerRadii({
+        topLeftRadius, topLeftRadius,
+        topRightRadius, topRightRadius,
+        bottomRightRadius, bottomRightRadius,
+        bottomLeftRadius, bottomLeftRadius
+    })
+    if strokeWidth and strokeColor then
+        drawable.setStroke(strokeWidth, strokeColor)
+    end
+    return drawable
+end
+
+local function iOSwitch(isChecked)
+    local trackColor = isChecked and button_color_on or button_color_off
+    local thumbColor = isChecked and button_text_on or button_text_off
+    local radius = 70
+    local thumbRadius = 25
+    local width = 55
+    local height = 45
+    local trackDrawable = luajava.new(GradientDrawable)
+    trackDrawable.setShape(GradientDrawable.RECTANGLE)
+    trackDrawable.setColor(trackColor)
+    trackDrawable.setCornerRadius(radius)
+    trackDrawable.setSize(width, height)
+    local thumbDrawable = luajava.new(GradientDrawable)
+    thumbDrawable.setShape(GradientDrawable.OVAL)
+    thumbDrawable.setColor(thumbColor)
+    thumbDrawable.setStroke(6, trackColor)
+    thumbDrawable.setSize(thumbRadius * 2, thumbRadius * 2)
+    local thumbX = isChecked and (width - thumbRadius * 2) or 0
+    local thumbY = (height - thumbRadius * 2) / 2
+    thumbDrawable.setBounds(thumbX, thumbY, thumbX + thumbRadius * 2, thumbY + thumbRadius * 2)
+    return trackDrawable, thumbDrawable
+end
+
+function updateiOSwitch(switchView, isChecked)
+    local trackDrawable, thumbDrawable = iOSwitch(isChecked)
+    switchView.setTrackDrawable(trackDrawable)
+    switchView.setThumbDrawable(thumbDrawable)
+end
+
+local function applyCheckboxStyling(checkboxView, isChecked)
+    if checkboxView and checkboxView.ButtonDrawable then
+        if isChecked then
+            checkboxView.ButtonDrawable.setColorFilter(PorterDuffColorFilter(checkbox_color_on or 0xFF00FF00, PorterDuff.Mode.SRC_ATOP))
+        else
+            checkboxView.ButtonDrawable.setColorFilter(PorterDuffColorFilter(checkbox_color_off or 0xFFFF0000, PorterDuff.Mode.SRC_ATOP))
+        end
+    end
+end
+
+local log = function(text,color, size)
+    local tmp = loadlayout {
+        LinearLayout, 
+        padding = "5dp",
+        layout_marginBottom = "-5dp",
+        orientation = "horizontal",
+        {
+            TextView,
+            text = Html.fromHtml("<font color='#f9c00c'> ["..os.date("  %Y-%m-%d %H:%M:%S] </font>")),
+            textSize = size or '8sp',
+            textColor = color or text_color or "#FF303030",
+            gravity = "center_vertical",
+            layout_width = "wrap_content",
+        },
+        {
+            TextView,
+            text = Html.fromHtml(text),
+            textSize = size or '8sp',
+            textColor = color or text_color or "#FF303030",
+            gravity = "center_vertical",
+            layout_width = "wrap_content",
+        }
+    }
+--    Runlog_list.addView(tmp)
+--    Runlog.fullScroll(View.FOCUS_DOWN)
+    print(os.date(" [%H:%M:%S] ") .. text)
+     toast.white(text)
+end
+    
+function SideBarLayout(id, text, align)
+    return {
+        TextView;
+        layout_width = "wrap_content"; -- Ubah ke wrap_content untuk fleksibilitas
+        layout_height = "wrap_content";
+        id = id;
+        text = text;
+        textColor = color_accent1;
+        textSize = "12sp";
+        gravity = align or "center";
+        padding = "2dp"; -- Kurangi padding dari 5dp ke 2dp
+    }
+end
+
+page1 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    paddingTop = "-1dp",
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            id = "sc1",
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_1",
+            },
+        },
+    },
+}
+
+page2 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_2",
+            },
+        },
+    },
+}
+
+page3 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_3",
+            },
+        },
+    },
+}
+
+page4 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_4",
+            },
+        },
+    },
+}
+
+page5 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_5",
+            },
+        },
+    },
+}
+
+page6 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_6",
+            },
+        },
+    },
+}
+
+page7 = {
+    LinearLayout,
+    layout_width="fill",
+    layout_height="fill",
+    padding = "1dp", 
+    {
+        LinearLayout,
+        layout_height="match_parent",
+        layout_margin="5.0dp",
+        layout_width="match_parent",
+        background = getShapeBackground(0x80000000, 24),  
+        {
+            ScrollView,
+            layout_height="match_parent",
+            padding="0.0dp",
+            layout_width="match_parent",
+            VerticalScrollBarEnabled=true,
+            {
+                LinearLayout,
+                layout_height="match_parent",
+                layout_width="match_parent",
+                orientation="vertical",
+                id="PageLayout_7",
+            },
+        },
+    },
+}
+
+
+local dm = activity.getResources().getDisplayMetrics()
+local screenWidth = dm.widthPixels
+local screenHeight = dm.heightPixels
+local layout_width, layout_height
+local fileWidth, fileHeight
+local screenRotate
+local maxWidth, minWidth, maxHeight, minHeight
+
+-- Fungsi bantu untuk membaca isi file
+local function readFile(path)
+  local file = io.open(path, "r")
+  if not file then return nil end
+  local content = file:read("*a")
+  file:close()
+  return content and content:gsub("%s+", "") -- hapus spasi dan newline
+end
+
+local function writeFile(path, content)
+  local file = io.open(path, "w")
+  if file then
+    file:write(content)
+    file:close()
+  else
+    print("Gagal menulis ke file: " .. path)
+  end
+end
+
+local function readFileClean(path)
+  local file = io.open(path, "r")
+  if not file then return nil end
+  local content = file:read("*a")
+  file:close()
+  -- Ambil angka pertama yang muncul (buang spasi/tab/baris baru)
+  return tonumber(content:match("(%d+)"))
+end
+
+if screenHeight < screenWidth then
+  maxWidth = 70
+  minWidth = 30
+  maxHeight = 80
+  minHeight = 30
+  screenRotate = "land"
+
+  local width = readFileClean(land_width_path)
+  local height = readFileClean(land_height_path)
+
+  -- Validasi dan set nilai default
+  if not width or width < minWidth or width > maxWidth then
+    width = 50
+    writeFile(land_width_path, "50")
+  end
+
+  if not height or height < minHeight or height > maxHeight then
+    height = 60
+    writeFile(land_height_path, "60")
+  end
+
+  fileWidth = width
+  fileHeight = height
+
+else
+  
+  maxWidth = 90
+  minWidth = 60
+  maxHeight = 50
+  minHeight = 20
+  screenRotate = "port"
+
+  local width = readFileClean(port_width_path)
+  local height = readFileClean(port_height_path)
+
+  -- Validasi dan set nilai default
+  if not width or width < minWidth or width > maxWidth then
+    width = 80
+    writeFile(port_width_path, "80")
+  end
+
+  if not height or height < minHeight or height > maxHeight then
+    height = 30
+    writeFile(port_height_path, "30")
+  end
+
+  fileWidth = width
+  fileHeight = height
+end
+
+-- Hitung ukuran layout (dijamin nilainya tidak nil)
+local width_pixels = math.floor((fileWidth * screenWidth) / 100)
+local height_pixels = math.floor((fileHeight * screenHeight) / 100)
+
+layout_width = width_pixels .. "px"
+layout_height = height_pixels .. "px"
+
+xfc = {
+    LinearLayout;
+    layout_height = "fill";
+    orientation = "vertical";
+    id = "touch";
+    layout_width = "fill";
+    {
+        LinearLayout;
+        background = getShapeBackground(main_bg_color, 18, 2, page_btn_color);
+        orientation = "vertical";
+        id = "ooo";
+        layout_width = layout_width,
+        layout_height = layout_height,
+        {
+            -- Header LinearLayout dengan background untuk username dan tombol exit/hide
+            LinearLayout;
+            layout_width = "match_parent";
+            layout_height = "wrap_content";
+            orientation = "horizontal";
+            -- background = getShapeBackground2(0xFF4A4D70, 22, 22, 0, 0, 2, 0xff52557a),
+            gravity = "center_vertical";
+            {
+                -- Container untuk tombol exit dan hide
+                LinearLayout;
+                layout_width = "0dp";
+                layout_weight = "1";
+                layout_height = "wrap_content";
+                orientation = "horizontal";
+                padding = "0dp";
+                gravity = "start|center_vertical";
+                {
+                    LinearLayout;
+                    layout_width = "22dp";
+                    layout_height = "18dp";
+                    orientation = "horizontal";
+                    id = "btn_hide2",
+                    gravity = "center|center_vertical";
+                    layout_marginStart = "8dp";
+                    layout_marginEnd = "8dp";
+                    background = getShapeBackground(0x00ffffff, 10);
+                    {
+                        ImageView,
+                        layout_width = "15dp";
+                        layout_height = "10dp";
+                        colorFilter = color_accent1,
+                        layout_marginTop = "-0dp";
+                        id = "arrow",
+                    },
+                },
+                { -- Username di sebelah kiri
+                    ShimmerTextView;
+                    layout_width = "0dp";
+                    layout_weight = "1";
+                    layout_height = "wrap_content";
+                    id = "header_left",
+                    text = header_top_left;
+                    textSize = "14sp";
+                    layout_marginStart = "-1dp";
+                    layout_marginLeft = "8dp";
+                    textColor = color_accent1;
+                    reflectionColor = reflection_color1,
+                    gravity = "center_vertical";
+                },
+            };
+            {
+                -- Container untuk tombol exit dan hide
+                LinearLayout;
+                layout_width = "wrap_content";
+                layout_height = "wrap_content";
+                orientation = "horizontal";
+                padding = "2dp";
+                {
+                    -- Tombol Exit
+                    CircleImageView;
+                    layout_width = "24dp";
+                    layout_height = "24dp";
+                    padding = "2dp";
+                    layout_marginRight = "8dp";
+                    id = "btn_exit";
+                  --  colorFilter = button_text_off,
+                    layout_gravity = "center";
+                };
+                {
+                    -- Tombol Hide
+                    CircleImageView;
+                    layout_width = "24dp";
+                    layout_height = "24dp";
+                    padding = "2dp";
+                    id = "btn_hide";
+                  --  colorFilter = button_text_on,
+                    layout_gravity = "center";
+                };
+            };
+        };
+        {
+            -- Pages section - Simplified structure
+            LinearLayout;
+            layout_height = "wrap_content";
+            orientation = "vertical";
+            layout_width = "match_parent";
+            {
+                -- HorizontalScrollView untuk tab
+                HorizontalScrollView;
+                layout_width = "match_parent";
+                layout_height = "wrap_content";
+                scrollBarStyle = "outsideOverlay";
+                layout_marginStart = "8dp";
+                layout_marginEnd = "8dp";
+                horizontalScrollBarEnabled = false;
+                {
+                    -- LinearLayout horizontal untuk menampung semua tab
+                    LinearLayout;
+                    layout_width = "wrap_content";
+                    layout_height = "wrap_content";
+                    orientation = "horizontal";
+                    paddingStart = "10dp";
+                    paddingEnd = "10dp";
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo1";
+                        text = "Player";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                        layout_marginRight = "4dp";
+                    };
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo2";
+                        text = "Enemy";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                        layout_marginRight = "4dp";
+                    };
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo3";
+                        text = "Quest";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                        layout_marginRight = "4dp";
+                    };
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo4";
+                        text = "Wallhack";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                        layout_marginRight = "4dp";
+                    };
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo5";
+                        text = "Damage";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                        layout_marginEnd = "4dp";
+                    };
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo6";
+                        text = "Defense";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                        layout_marginEnd = "4dp";
+                    };
+                    {
+                        TextView;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        id = "ooo7";
+                        text = "Setting";
+                        textColor = color_accent1;
+                        textSize = "12sp";
+                        gravity = "center";
+                        padding = "4dp";
+                        paddingTop = "2dp",
+                        paddingBottom = "2dp",
+                    };
+                };
+            };
+            {
+                -- Garis di bawah tab
+                View;
+                layout_width = "match_parent";
+                layout_height = "1.5dp";
+                background = getShapeBackground(page_btn_color, 0);
+                layout_marginTop = "-1dp";
+                layout_marginBottom = "0dp";
+                layout_marginStart = "8dp";
+                layout_marginEnd = "8dp";
+            };
+        };
+        {
+            -- Main content area (full width)
+            LinearLayout;
+            layout_height = "0dp";
+            layout_weight = "1";
+            orientation = "vertical";
+            layout_width = "match_parent";
+            {
+                LinearLayout;
+                layout_height = "match_parent";
+                layout_width = "match_parent";
+                {
+                    PageView;
+                    layout_width = "match_parent";
+                    id = "page_main";
+                    layout_height = "match_parent";
+                    pages = {
+                        page1,
+                        page2,
+                        page3,
+                        page4,
+                        page5,
+                        page6,
+                        page7,
+                    };
+                };
+            };
+        };
+        {
+            -- Konfirmasi Exit (initially hidden)
+            LinearLayout;
+            id = "confirm_exit";
+            layout_width = "match_parent";
+            layout_height = "wrap_content";
+            visibility = View.GONE;
+            orientation = "vertical";
+            layout_margin = "8dp";
+            background = getShapeBackground(button_color_off2, 16, 2, button_stroke_color_off2);
+            {
+                TextView;
+                layout_width = "match_parent";
+                layout_height = "wrap_content";
+                text = "Are you sure you want to exit?";
+                textSize = "12sp";
+                textColor = text_color, 
+                gravity = "center";
+                padding = "8dp";
+            };
+            {
+                LinearLayout;
+                layout_width = "match_parent";
+                layout_height = "wrap_content";
+                orientation = "horizontal";
+                gravity = "center";
+                layout_margin = "4dp";
+                {
+                    TextView;
+                    layout_width = "0dp";
+                    layout_weight = "1";
+                    layout_height = "wrap_content";
+                    text = "Cancel";
+                    gravity = "center";
+                    textColor = button_text_on;
+                    background = getShapeBackground(0xff255736, 14, 2, 0xff327a4a);
+                    padding = "8dp";
+                    layout_margin = "2dp";
+                    id = "btn_cancel_exit";
+                };
+                {
+                    TextView;
+                    layout_width = "0dp";
+                    layout_weight = "1";
+                    layout_height = "wrap_content";
+                    text = "Confirm Exit";
+                    gravity = "center";
+                    textColor = button_text_off;
+                    background = getShapeBackground(0xff57252c, 14, 2, 0xff7a323c);
+                    padding = "8dp";
+                    layout_margin = "2dp";
+                    id = "btn_confirm_exit";
+                };
+            };
+        };
+        {
+            LinearLayout;
+            id = "resize_handler";
+            layout_width = "match_parent";
+            layout_height = "22dp";
+            orientation = "horizontal";
+            gravity = "end|center_vertical";
+            background = getShapeBackground2(0xff57252c, 0, 0, 18, 18),
+            {
+                ImageView;
+                id = "btn_resize";
+                layout_width = "20dp";
+                layout_height = "20dp";
+                layout_marginEnd = "6dp";
+                colorFilter = "0xffffffff",
+                Alpha = .5,
+            };
+        };
+    };
+}
+
+xfq = {
+    LinearLayout;
+    layout_height="fill";
+    layout_width="fill";
+    {
+        LinearLayout;
+        layout_width="wrap_content";
+        layout_height="wrap_content";
+        {
+            ImageView;
+            layout_width=Point_sizePx;
+            layout_height=Point_sizePx;
+            scaleType="fitCenter";
+            id="suspended_ball";
+        };
+    };
+}
+
+mainLayoutParams = getLayoutParams()
+
+-- Updated invoke function with exit confirmation functionality
+invoke = function()
+    xfq = loadlayout(xfq)
+    xfc = loadlayout(xfc)
+    suspended_ball.setImageBitmap(loadbitmap(Point))
+    btn_hide.setImageBitmap(ic_minus)
+    btn_exit.setImageBitmap(ic_close)
+    arrow.setImageBitmap(ic_ard)
+    btn_resize.setImageBitmap(ic_resize)
+
+    local state = { isFocusable = false }
+    local mainLayoutParams = getLayoutParams()
+    local function refreshState()
+        mainLayoutParams.flags = state.isFocusable and WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        window.updateViewLayout(xfq, mainLayoutParams)
+        window.updateViewLayout(xfc, mainLayoutParams)
+    end
+
+    local function Point_postCallback(post)
+        local runnable = {
+            run = function()
+                Tools.a(suspended_ball, 0.0)
+            end,
+        }
+        rx.a().removeCallbacks(runnable)
+        if post then
+            suspended_ball.setImageAlpha(255.0)
+            rx.a().postDelayed(runnable, Point_mVanishingTime * 1000)
+        end
+    end
+
+    -- HIDE MENU
+    local function onMinimize(v)
+        confirm_exit.setVisibility(View.GONE)
+        page_main.setVisibility(View.VISIBLE)
+        window.removeView(xfc)
+        sparkle_animation(suspended_ball)
+        sparkle_startanimation()
+        state.isFocusable = false
+        window.addView(xfq, mainLayoutParams)
+        if (Point_mVanishingTime < 0) then
+            Tools.a(suspended_ball, 255.0)
+        else
+            Point_postCallback(true)
+        end
+        refreshState()
+    end
+
+    -- SHOW EXIT CONFIRMATION
+    local function showExitConfirmation(v)
+        confirm_exit.setVisibility(View.VISIBLE)
+        page_main.setVisibility(View.GONE)
+    end
+
+    -- HIDE EXIT CONFIRMATION
+    local function hideExitConfirmation(v)
+        confirm_exit.setVisibility(View.GONE)
+        page_main.setVisibility(View.VISIBLE)
+    end
+
+    -- KILL MENU
+    local function onRealExit(v)
+        toast.white("Menu Killed~", 1500)
+        Point_posX.setInt(Point, mainLayoutParams.x)
+        Point_posY.setInt(Point, mainLayoutParams.y)
+        FloatPanel.getDeclaredMethod("b").setAccessible(true).invoke(Point)
+        Point.d()
+        toast.white("Thanks for using! Goodbye")
+        window.removeView(xfc)
+        Point_postCallback(false)
+        Lock.unUi()
+        os.exit()
+    end
+
+    suspended_ball.onTouch = function(v, event)
+        local action = event.getAction()
+        if action == MotionEvent.ACTION_DOWN then
+            isMove = false
+            RawX = event.getRawX()
+            RawY = event.getRawY()
+            x = mainLayoutParams.x
+            y = mainLayoutParams.y
+        elseif action == MotionEvent.ACTION_MOVE then
+            isMove = true
+            mainLayoutParams.x = x + (event.getRawX() - RawX)
+            mainLayoutParams.y = y + (event.getRawY() - RawY)
+            window.updateViewLayout(xfq, mainLayoutParams)
+        end
+    end
+    
+    function getScreenWidth()
+        return activity.getResources().getDisplayMetrics().widthPixels
+    end
+
+    function getScreenHeight()
+        return activity.getResources().getDisplayMetrics().heightPixels
+    end
+    
+    btn_resize.setOnTouchListener({
+    onTouch = function(view, event)
+        local action = event.getAction()
+        if action == MotionEvent.ACTION_DOWN then
+            isResizing = true
+            startTouchX = event.getRawX()
+            startTouchY = event.getRawY()
+            startWidth = ooo.getWidth()
+            startHeight = ooo.getHeight()
+            return true
+
+        elseif action == MotionEvent.ACTION_MOVE and isResizing then  
+            local dx = event.getRawX() - startTouchX  
+            local dy = event.getRawY() - startTouchY  
+            local screenWidth = getScreenWidth()  
+            local screenHeight = getScreenHeight()  
+            local newWidth = startWidth + dx  
+            local newHeight = startHeight + dy  
+            local pctWidth = (newWidth / screenWidth) * 100  
+            local pctHeight = (newHeight / screenHeight) * 100  
+
+            if pctWidth < minWidth then  
+                newWidth = screenWidth * minWidth / 100  
+                pctWidth = minWidth
+            elseif pctWidth > maxWidth then  
+                newWidth = screenWidth * maxWidth / 100  
+                pctWidth = maxWidth
+            end  
+
+            if pctHeight < minHeight then  
+                newHeight = screenHeight * minHeight / 100  
+                pctHeight = minHeight
+            elseif pctHeight > maxHeight then  
+                newHeight = screenHeight * maxHeight / 100  
+                pctHeight = maxHeight
+            end  
+
+            -- Simpan persentase terakhir untuk digunakan saat ACTION_UP
+            lastWidthPct = pctWidth
+            lastHeightPct = pctHeight
+
+            local params = ooo.getLayoutParams()  
+            params.width = newWidth  
+            params.height = newHeight  
+            ooo.setLayoutParams(params)  
+            btn_resize.setAlpha(1)
+            return true  
+
+        elseif action == MotionEvent.ACTION_UP or action == MotionEvent.ACTION_CANCEL then  
+            isResizing = false
+            btn_resize.setAlpha(.5)
+            -- Gunakan persentase yang sudah disimpan dari ACTION_MOVE
+            if lastWidthPct and lastHeightPct then
+                -- Simpan width berdasarkan orientasi layar dalam persentase
+                if screenRotate == "land" then
+                    writeFile(land_width_path, tostring(lastWidthPct))
+                else
+                    writeFile(port_width_path, tostring(lastWidthPct))
+                end
+                
+                -- Simpan height berdasarkan orientasi layar dalam persentase
+                if screenRotate == "land" then
+                    writeFile(land_height_path, tostring(lastHeightPct))
+                else
+                    writeFile(port_height_path, tostring(lastHeightPct))
+                end
+            end
+            
+            return true  
+        end  
+
+        return false  
+    end  
+})
+
+    touch.onTouch = function(v, event)
+        local action = event.getAction()
+        if action == MotionEvent.ACTION_DOWN then
+            isMove = false
+            RawX = event.getRawX()
+            RawY = event.getRawY()
+            x = mainLayoutParams.x
+            y = mainLayoutParams.y
+        elseif action == MotionEvent.ACTION_MOVE then
+            isMove = true
+            mainLayoutParams.x = x + (event.getRawX() - RawX)
+            mainLayoutParams.y = y + (event.getRawY() - RawY)
+            window.updateViewLayout(xfc, mainLayoutParams)
+        end
+    end
+
+    suspended_ball.onClick = function(v)
+        window.removeView(xfq)
+        sparkle_animation(ooo)
+        sparkle_startanimation()
+        state.isFocusable = true
+        window.addView(xfc, mainLayoutParams)
+        Point_postCallback(false)
+        refreshState()
+    end
+
+    -- Updated button click handlers
+    btn_hide2.onClick = onMinimize
+    btn_hide.onClick = onMinimize
+    btn_exit.onClick = showExitConfirmation  -- Changed from onLongClick to onClick
+    btn_cancel_exit.onClick = hideExitConfirmation
+    btn_confirm_exit.onClick = onRealExit
+    
+    local function page_onClick(page, index)
+        page.onClick = function()
+            page_main.showPage(index)
+        end
+    end
+
+    local pages = {
+        ooo1,
+        ooo2,
+        ooo3,
+        ooo4,
+        ooo5,
+        ooo6,
+        ooo7,
+    }
+    for i, page in ipairs(pages) do
+        page_onClick(page, i - 1)
+    end
+
+local function setBackgroundForPages(selectedIndex)
+    for i, page in ipairs(pages) do
+        local color = (i - 1 == selectedIndex) and getShapeBackground2(page_btn_color, 10, 10, 0, 0, 2 , 0xff7a323c) or getShapeBackground(0x00ffffff, 0)
+        local colortext = (i - 1 == selectedIndex) and color_accent1 or text_color
+        page.setBackgroundDrawable(color)
+        page.setTextColor(colortext)
+    end
+end
+
+    page_main.setOnPageChangeListener(PageView.OnPageChangeListener{
+        onPageSelected = function(v)
+            setBackgroundForPages(v)
+        end
+    })
+
+    
+    
+    
+
+    sparkle_animation(suspended_ball)
+    sparkle_startanimation()
+
+    local shimmer = Shimmer()
+    local shimmerElements = {
+        header_left
+        
+    }
+    for _, element in ipairs(shimmerElements) do
+        shimmer.start(element)
+    end
+
+    shimmer.setRepeatCount(-1)
+    shimmer.setDuration(2500)
+    shimmer.setStartDelay(700)
+    shimmer.setDirection(Shimmer.ANIMATION_DIRECTION_LTR)
+
+-- Fungsi untuk membuat tab dengan fungsi open dan close yang sama
+local function createTab()
+    return {
+        text = text, -- asumsikan variabel 'text' sudah didefinisikan sebelumnya
+        open = function(self)
+            Name = self.text
+            local runnable = {
+                run = function()
+                    pcall(On, self.value)
+                end,
+            }
+            rx.b(runnable)
+        end,
+        close = function(self)
+            Name = self.text
+            local runnable = {
+                run = function()
+                    pcall(Off, self.value)
+                end,
+            }
+            rx.b(runnable)
+        end,
+    }
+end
+
+local function ct(name, totaltab)
+    local tab = {}
+    for i = 1, totaltab do
+        tab[i] = createTab()
+    end
+    _G[name] = tab -- Menyimpan tabel ke variabel global dengan nama yang diberikan
+    return tab
+end
+
+-- Membuat tabel player_tabs dengan 9 elemen menggunakan fungsi createTab
+ct("tab1", 15)
+ct("tab2", 7)
+ct("tab3", 7)
+ct("tab4", 7)
+ct("tab5", 7)
+ct("tab6", 7)
+ct("tab7", 5)
+
+function applyRadioButtonStyling(radioButton, isChecked)
+    if radioButton and radioButton.setButtonDrawable then
+        local color = isChecked and checkbox_color_on or checkbox_color_off
+        radioButton.setButtonTintList(ColorStateList.valueOf(color))
+        radioButton.setTextColor(text_color or 0xffffffff)
+    end
+end
+
+local function createTextView(id, text, textColor, marginStart, marginEnd, layoutWeight)
+    return {
+        TextView;
+        id = id;
+        text = Html.fromHtml(text);
+        textSize = "10sp";
+        textColor = textColor or text_color or "#ffffffff";
+        layout_marginStart = marginStart or "2.5dp";
+        layout_marginEnd = marginEnd or "2.5dp";
+        layout_width = layoutWeight and "0dp" or "wrap_content";
+        layout_weight = layoutWeight or nil;
+        layout_gravity = "center_vertical";
+        ellipsize = "marquee";
+        singleLine = "true";
+        focusable = "true";
+        focusableInTouchMode = "true";
+    }
+end
+    
+local function createSubTextView(id, text, textColor, marginStart, marginEnd, layoutWeight)
+    return {
+        TextView;
+        id = id .. "_sub";
+        text = Html.fromHtml(text);
+        textSize = "8sp";
+        textColor = textColor or sub_text_color or "#FFAAAAAA";
+        layout_marginStart = marginStart or "2.5dp";
+        layout_marginEnd = marginEnd or "2.5dp";
+        layout_width = "wrap_content";
+        layout_height = "wrap_content";
+        ellipsize = "marquee";
+        singleLine = "true";
+        focusable = "true";
+        focusableInTouchMode = "true";
+    }
+end
+
+local function createSwitch(id, isChecked, onChangeListener)
+    local trackDrawable, thumbDrawable = iOSwitch(isChecked)
+    return {
+        Switch;
+        id = id;
+        layout_width = "wrap_content";
+        layout_height = "wrap_content";
+        layout_marginStart = "2.5dp";
+        layout_marginEnd = "2.5dp";
+        checked = isChecked;
+        scaleX = .8,
+        scaleY = .8,
+        trackDrawable = trackDrawable;
+        thumbDrawable = thumbDrawable;
+        onCheckedChangeListener = onChangeListener;
+    }
+end
+
+local function createCheckbox(id, isChecked, onChangeListener)
+    return {
+        CheckBox;
+        id = id;
+        layout_width = "wrap_content";
+        layout_height = "wrap_content";
+        layout_marginStart = "2.5dp";
+        layout_marginEnd = "2.5dp";
+        scaleX = .8,
+        scaleY = .8,
+        checked = isChecked;
+        onCheckedChangeListener = function(view, checked)
+            applyCheckboxStyling(view, checked)
+            if onChangeListener then
+                onChangeListener(view, checked)
+            end
+        end;
+    }
+end
+
+local function createRadioButton(id, text, isChecked, onChangeListener)
+    local radioButton = {
+        RadioButton;
+        id = id;
+        text = text;
+        layout_width = "wrap_content";
+        layout_height = "wrap_content";
+        layout_marginStart = "2.5dp";
+        layout_marginEnd = "2.5dp";
+        textSize = "12sp";
+        scaleX = .8,
+        scaleY = .8,
+        checked = isChecked;
+        onCheckedChangeListener = function(view, checked)
+            applyRadioButtonStyling(view, checked)
+            if onChangeListener then
+                onChangeListener(view, checked)
+            end
+        end;
+    }
+    return radioButton
+end
+
+local function createButton(id, text, onClickListener)
+    return {
+        Button;
+        id = id;
+        text = text;
+        layout_width = "match_parent";
+        layout_height = "34dp";
+        layout_marginStart = "2.5dp";
+        layout_marginEnd = "2.5dp";
+        textSize = "10sp";
+        onClick = onClickListener;
+    }
+end
+
+local function createToggleButton(id, text, textOn, textOff, isChecked, onChangeListener)
+    return {
+        ToggleButton;
+        id = id;
+        text = text,
+        textOn = textOn or "ON";
+        textOff = textOff or "OFF";
+        layout_width = "match_parent";
+        layout_height = "34dp";
+        layout_marginStart = "2.5dp";
+        layout_marginEnd = "2.5dp";
+        checked = isChecked;
+        textSize = "10sp";
+        onCheckedChangeListener = onChangeListener;
+    }
+end
+
+local function createSeekBar(id, min, max, progress, onChangeListener)
+    return {
+        SeekBar;
+        id = id;
+        layout_width = "match_parent";
+        layout_height = "wrap_content";
+        layout_marginStart = "2.5dp";
+        layout_marginEnd = "2.5dp";
+        layout_marginTop = "5dp";
+        min = min or 0;
+        max = max or 100;
+        progress = progress or 0;
+        onSeekBarChangeListener = onChangeListener;
+    }
+end
+
+MenuPath = GamePath.."/Pref"
+file.mkdirs(MenuPath)
+    
+setting_save_preference = readFile(setting_pref_path) or false
+
+-- Fungsi untuk membaca saved preference
+function readSavedPreference(key, defaultValue)
+    if not setting_save_preference or setting_save_preference == "false" then
+        return defaultValue
+    end
+    
+    local prefPath = MenuPath .. "/" .. key .. ".txt"
+    local savedValue = readFile(prefPath)
+    
+    if savedValue == nil then
+        return defaultValue
+    end
+    
+    -- Handle different types
+    if savedValue == "true" then
+        return true
+    elseif savedValue == "false" then
+        return false
+    elseif tonumber(savedValue) then
+        return tonumber(savedValue)
+    else
+        return savedValue
+    end
+end
+
+-- Fungsi untuk menyimpan preference
+function savePreference(key, value)
+    file.mkdirs(MenuPath)
+    if not setting_save_preference or setting_save_preference == "false" then
+        return
+    end
+    
+    local prefPath = MenuPath .. "/" .. key .. ".txt"
+    writeFile(prefPath, tostring(value))
+end
+
+-- Fungsi untuk generate unique key untuk setiap item
+function generatePrefKey(menuType, index, subIndex)
+    if subIndex then
+        return "menu_" .. menuType .. "_" .. index .. "_" .. subIndex
+    else
+        return "menu_" .. menuType .. "_" .. index
+    end
+end
+
+-- Fungsi untuk menjalankan script berdasarkan state yang tersimpan
+function executeScriptOnLoad(itemAction, itemName, isChecked, index, subIndex, value)
+    if itemAction then
+        local runnable = {
+            run = function()
+                if value then
+                    -- Untuk seekbar
+                    pcall(itemAction, {text = itemName, value = value}, isChecked, value, index, subIndex)
+                else
+                    -- Untuk checkbox/switch/toggle/radio
+                    pcall(itemAction, {text = itemName}, isChecked, index, subIndex)
+                end
+            end,
+        }
+        rx.b(runnable)
+    end
+end
+
+function CreateMenu(arr, func, menuType, menuItems)
+    if type(arr) ~= 'table' then
+        return error('The parameter must be of table type')
+    end
+
+    local function enableMarquee(textView, text)
+        local textLengthThreshold = 10
+        if #text > textLengthThreshold then
+            textView.setSelected(true)
+        end
+    end
+
+    -- Tambahkan fungsi untuk format label kittyseekbar
+    local function getKittyLabel(item, progress)
+        local labelKey = "e" .. tostring(progress)
+        if item[labelKey] then
+            return tostring(item[labelKey])
+        else
+            return tostring(progress)
+        end
+    end
+
+    -- Perbaikan: makeTextClickable sekarang bisa toggle checkbox/switch pada tab 2
+    local function makeTextClickable(textView, controlId, controlType)
+        textView.setOnClickListener({
+            onClick = function(view)
+                local control = _G[controlId]
+                if control then
+                    if controlType == "switch" or controlType == "checkbox" then
+                        local currentState = control.isChecked()
+                        control.setChecked(not currentState)
+                    end
+                end
+            end
+        })
+    end
+
+    local function createLayout(menuItems, customAction)
+        for i, item in ipairs(menuItems) do
+            if type(item) == "table" and #item > 1 and item[1] and item[1].type and
+                (item[1].type == "checkbox" or item[1].type == "switch") then
+                local rowLayout = {
+                    LinearLayout;
+                    orientation = "horizontal";
+                    layout_width = "match_parent";
+                    layout_height = "wrap_content";
+                    padding = "4.1dp";
+                }
+
+                for j, subItem in ipairs(item) do
+                    local subItemName = subItem.name or ("Unknown Option " .. j)
+                    local subItemType = subItem.type or "switch"
+                    local subItemAction = subItem.action
+                    local savePref = subItem.save_pref ~= false -- default true
+                    
+                    -- Load saved state
+                    local defaultChecked = subItem.isChecked or false
+                    local isChecked = savePref and readSavedPreference(generatePrefKey(menuType, i, j), defaultChecked) or defaultChecked
+
+                    local componentId = "component_" .. menuType .. "_" .. i .. "_" .. j
+                    local textId = "TabText" .. menuType .. "_" .. i .. "_" .. j
+
+                    local textLayout = {
+                        LinearLayout;
+                        orientation = "vertical";
+                        layout_width = "0dp";
+                        layout_weight = 1;
+                        layout_height = "wrap_content";
+                        layout_marginStart = "2.5dp";
+                        layout_marginEnd = "1dp";
+                        layout_gravity = "center_vertical";
+                    }
+
+                    table.insert(textLayout, createTextView(textId, subItemName, subItem.textColor, subItem.marginStart, subItem.marginEnd))
+
+                    if subItem.sub_text then
+                        table.insert(textLayout, createSubTextView(textId, subItem.sub_text, subItem.textColor, subItem.marginStart, subItem.marginEnd))
+                    end
+
+                    local onChangeListener = function(view, isChecked)
+                        local runnable = {
+                            run = function()
+                                pcall(subItemAction, {text = subItemName}, isChecked, i, j)
+                                if customAction then
+                                    pcall(customAction, {text = subItemName}, isChecked, i, j)
+                                end
+                                -- Save preference if enabled
+                                if savePref then
+                                    savePreference(generatePrefKey(menuType, i, j), isChecked)
+                                end
+                            end,
+                        }
+                        if subItemType == "switch" then
+                            updateiOSwitch(view, isChecked)
+                        end
+                        rx.b(runnable)
+                    end
+
+                    -- CHANGE: Switch now positioned on the left, checkbox remains on the left
+                    if subItemType == "switch" then
+                        table.insert(rowLayout, createSwitch(componentId, isChecked, onChangeListener))
+                        table.insert(rowLayout, textLayout)
+                    elseif subItemType == "checkbox" then
+                        table.insert(rowLayout, createCheckbox(componentId, isChecked, onChangeListener))
+                        table.insert(rowLayout, textLayout)
+                    end
+                end
+
+                local layoutView = loadlayout(rowLayout)
+                func.addView(layoutView)
+
+                for j, subItem in ipairs(item) do
+                    local componentId = "component_" .. menuType .. "_" .. i .. "_" .. j
+                    local textView = _G["TabText" .. menuType .. "_" .. i .. "_" .. j]
+                    local subTextView = _G["TabText" .. menuType .. "_" .. i .. "_" .. j .. "_sub"]
+                    local savePref = subItem.save_pref ~= false
+                    local subItemName = subItem.name or ("Unknown Option " .. j)
+                    local defaultChecked = subItem.isChecked or false
+                    local isChecked = savePref and readSavedPreference(generatePrefKey(menuType, i, j), defaultChecked) or defaultChecked
+
+                    if textView then
+                        enableMarquee(textView, subItem.name or "")
+                        makeTextClickable(textView, componentId, subItem.type)
+                    end
+                    if subTextView then
+                        enableMarquee(subTextView, subItem.sub_text or "")
+                        makeTextClickable(subTextView, componentId, subItem.type)
+                    end
+
+                    if subItem.type == "checkbox" then
+                        local checkboxView = _G[componentId]
+                        if checkboxView then
+                            applyCheckboxStyling(checkboxView, isChecked)
+                        end
+                    end
+
+                    -- Execute script if checkbox/switch is checked on load
+                    if isChecked and subItem.action then
+                        executeScriptOnLoad(subItem.action, subItemName, isChecked, i, j)
+                    end
+                end
+
+            else
+                local actualItem = type(item) == "table" and #item == 1 and item[1] or item
+                local itemName = actualItem.name or "Unknown Option"
+                local itemType = actualItem.type or "switch"
+                local itemAction = actualItem.action
+                local savePref = actualItem.save_pref ~= false -- default true
+                
+                -- Load saved state
+                local defaultChecked = actualItem.isChecked or false
+                local isChecked = savePref and readSavedPreference(generatePrefKey(menuType, i), defaultChecked) or defaultChecked
+
+                local componentId = "component_" .. menuType .. "_" .. i
+                local textId = "TabText" .. menuType .. i
+
+                local mainLayout = {
+                    LinearLayout;
+                    orientation = "vertical";
+                    layout_width = "match_parent";
+                    layout_height = "wrap_content";
+                    padding = "4.1dp";
+                }
+
+                if itemType == "text" then
+                    -- Text-only layout
+                    local textLayout = {
+                        LinearLayout;
+                        orientation = "vertical";
+                        layout_width = "match_parent";
+                        layout_height = "wrap_content";
+                        layout_marginStart = "2.5dp";
+                        layout_marginEnd = "2.5dp";
+                        padding = "4dp";
+                    }
+
+                    table.insert(textLayout, createTextView(textId, itemName, actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+
+                    if actualItem.sub_text then
+                        table.insert(textLayout, createSubTextView(textId, actualItem.sub_text, actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+                    end
+
+                    table.insert(mainLayout, textLayout)
+
+                elseif itemType == "radio" then
+                    -- IMPROVED: Radio button group implementation with lines control
+                    local radioGroupId = componentId .. "_group"
+                    local orientation = actualItem.orientation or "vertical"
+                    local items = actualItem.items or {}
+                    local lines = actualItem.lines or nil -- New: lines parameter
+                    local defaultSelected = actualItem.selected or 1
+                    local savedSelected = savePref and readSavedPreference(generatePrefKey(menuType, i), defaultSelected) or defaultSelected
+    
+                    -- Main title layout
+                    local titleLayout = {
+                        LinearLayout;
+                        orientation = "vertical";
+                        layout_width = "match_parent";
+                        layout_height = "wrap_content";
+                        layout_marginStart = "2.5dp";
+                        layout_marginEnd = "2.5dp";
+                        layout_marginBottom = "5dp";
+    }
+
+                    table.insert(titleLayout, createTextView(textId, itemName, actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+
+                    if actualItem.sub_text then
+                        table.insert(titleLayout, createSubTextView(textId, actualItem.sub_text, actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+                    end
+
+                    table.insert(mainLayout, titleLayout)
+
+                    -- Radio group container with line support
+                    if lines and lines > 1 then
+                        -- Create grid-like layout using multiple horizontal LinearLayouts
+                        local itemsPerLine = math.ceil(#items / lines)
+                        local currentItemIndex = 1
+        
+                        for line = 1, lines do
+                            if currentItemIndex > #items then break end
+            
+                            local lineLayout = {
+                                LinearLayout;
+                                orientation = "horizontal";
+                                layout_width = "match_parent";
+                                layout_height = "wrap_content";
+                                layout_marginStart = "5dp";
+                                layout_marginEnd = "5dp";
+                                layout_marginTop = line == 1 and "0dp" or "2dp";
+                                layout_marginBottom = line == lines and "0dp" or "2dp";
+                            }
+            
+                            -- Calculate items for this line
+                            local remainingItems = #items - currentItemIndex + 1
+                            local itemsInThisLine = math.min(itemsPerLine, remainingItems)
+            
+                            -- Add radio buttons to this line
+                            for j = 1, itemsInThisLine do
+                                local radioText = items[currentItemIndex]
+                                local radioId = componentId .. "_radio_" .. currentItemIndex
+                                local isSelected = (currentItemIndex == savedSelected)
+                                local actualIndex = currentItemIndex -- Capture for closure
+                
+                                local radioButton = createRadioButton(radioId, radioText, isSelected, function(view, checked)
+                                    if checked then
+                                        -- Uncheck all other radio buttons manually
+                                        for idx = 1, #items do
+                                            local otherRadioId = componentId .. "_radio_" .. idx
+                                            local otherRadio = _G[otherRadioId]
+                                            if otherRadio and idx ~= actualIndex then
+                                                otherRadio.setChecked(false)
+                                            end
+                                        end
+                        
+                                        local runnable = {
+                                            run = function()
+                                                pcall(itemAction, {text = itemName}, actualIndex, actualIndex)
+                                                if customAction then
+                                                    pcall(customAction, {text = itemName}, actualIndex, actualIndex)
+                                                end
+                                                -- Save preference if enabled
+                                                if savePref then
+                                                    savePreference(generatePrefKey(menuType, i), actualIndex)
+                                                end
+                                            end,
+                                        }
+                                        rx.b(runnable)
+                                    end
+                                end)
+                
+                                -- Add weight to distribute evenly
+                                radioButton.layout_width = "0dp"
+                                radioButton.layout_weight = 1
+                                radioButton.layout_gravity = "center_vertical"
+                
+                                table.insert(lineLayout, radioButton)
+                                currentItemIndex = currentItemIndex + 1
+                            end
+            
+                            -- Fill remaining space if line is not full
+                            local maxItemsPerLine = math.ceil(#items / lines)
+                            while itemsInThisLine < maxItemsPerLine do
+                                table.insert(lineLayout, {
+                                    View;
+                                    layout_width = "0dp";
+                                    layout_weight = 1;
+                                    layout_height = "wrap_content";
+                                })
+                                itemsInThisLine = itemsInThisLine + 1
+                            end
+            
+                            table.insert(mainLayout, lineLayout)
+                        end
+                    else
+                        -- Original single RadioGroup layout
+                        local radioGroupLayout = {
+                            RadioGroup;
+                            id = radioGroupId;
+                            orientation = orientation;
+                            layout_width = "match_parent";
+                            layout_height = "wrap_content";
+                            layout_marginStart = "5dp";
+                            layout_marginEnd = "5dp";
+                            onCheckedChangeListener = function(group, checkedId)
+                                -- Find which radio button was selected
+                                local selectedIndex = 1
+                                for idx, _ in ipairs(items) do
+                                    local radioId = componentId .. "_radio_" .. idx
+                                    local radioView = _G[radioId]
+                                    if radioView and radioView.getId() == checkedId then
+                                        selectedIndex = idx
+                                        break
+                                    end
+                                end
+                
+                                local runnable = {
+                                    run = function()
+                                        pcall(itemAction, {text = itemName}, selectedIndex, selectedIndex)
+                                        if customAction then
+                                            pcall(customAction, {text = itemName}, selectedIndex, selectedIndex)
+                                        end
+                                        -- Save preference if enabled
+                                        if savePref then
+                                            savePreference(generatePrefKey(menuType, i), selectedIndex)
+                                        end
+                                    end,
+                                }
+                                rx.b(runnable)
+                            end;
+                        }
+
+                        -- Add radio buttons to the group
+                        for idx, radioText in ipairs(items) do
+                            local radioId = componentId .. "_radio_" .. idx
+                            local isSelected = (idx == savedSelected)
+                            table.insert(radioGroupLayout, createRadioButton(radioId, radioText, isSelected, nil))
+                        end
+
+                        table.insert(mainLayout, radioGroupLayout)
+                    end
+
+                elseif itemType == "switch" or itemType == "checkbox" then
+                    local rowLayout = {
+                        LinearLayout;
+                        orientation = "horizontal";
+                        layout_width = "match_parent";
+                        layout_height = "wrap_content";
+                    }
+
+                    local textLayout = {
+                        LinearLayout;
+                        orientation = "vertical";
+                        layout_width = "0dp";
+                        layout_weight = 1;
+                        layout_height = "wrap_content";
+                        layout_marginStart = "2.5dp";
+                        layout_marginEnd = "2.5dp";
+                        layout_gravity = "center_vertical";
+                    }
+
+                    table.insert(textLayout, createTextView(textId, itemName, actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+
+                    if actualItem.sub_text then
+                        table.insert(textLayout, createSubTextView(textId, actualItem.sub_text, actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+                    end
+
+                    -- CHANGE: Switch now positioned on the left
+                    if itemType == "switch" then
+                        local onChangeListener = function(view, isChecked)
+                            local runnable = {
+                                run = function()
+                                    pcall(itemAction, {text = itemName}, isChecked, i)
+                                    if customAction then
+                                        pcall(customAction, {text = itemName}, isChecked, i)
+                                    end
+                                    -- Save preference if enabled
+                                    if savePref then
+                                        savePreference(generatePrefKey(menuType, i), isChecked)
+                                    end
+                                end,
+                            }
+                            updateiOSwitch(view, isChecked)
+                            rx.b(runnable)
+                        end
+                        table.insert(rowLayout, createSwitch(componentId, isChecked, onChangeListener))
+                        table.insert(rowLayout, textLayout)
+                    elseif itemType == "checkbox" then
+                        local onChangeListener = function(view, isChecked)
+                            local runnable = {
+                                run = function()
+                                    pcall(itemAction, {text = itemName}, isChecked, i)
+                                    if customAction then
+                                        pcall(customAction, {text = itemName}, isChecked, i)
+                                    end
+                                    -- Save preference if enabled
+                                    if savePref then
+                                        savePreference(generatePrefKey(menuType, i), isChecked)
+                                    end
+                                end,
+                            }
+                            rx.b(runnable)
+                        end
+                        table.insert(rowLayout, createCheckbox(componentId, isChecked, onChangeListener))
+                        table.insert(rowLayout, textLayout)
+                    end
+
+                    table.insert(mainLayout, rowLayout)
+
+                elseif itemType == "button" then
+                    local onClickListener = function(view)
+                        local runnable = {
+                            run = function()
+                                pcall(itemAction, {text = itemName}, false, i)
+                                if customAction then
+                                    pcall(customAction, {text = itemName}, false, i)
+                                end
+                            end,
+                        }
+                        rx.b(runnable)
+                    end
+                    table.insert(mainLayout, createButton(componentId, itemName, onClickListener))
+
+                elseif itemType == "togglebutton" then
+                    local onChangeListener = function(view, isChecked)
+                        if isChecked then
+                            view.setBackground(getShapeBackground(button_color_on, 16, 1.5, button_stroke_color_on))
+                        else
+                            view.setBackground(getShapeBackground(button_color_off, 16, 1.5, button_stroke_color_off))
+                        end
+                        local runnable = {
+                            run = function()
+                                pcall(itemAction, {text = itemName}, isChecked, i)
+                                if customAction then
+                                    pcall(customAction, {text = itemName}, isChecked, i)
+                                end
+                                -- Save preference if enabled
+                                if savePref then
+                                    savePreference(generatePrefKey(menuType, i), isChecked)
+                                end
+                            end,
+                        }
+                        rx.b(runnable)
+                    end
+                    table.insert(mainLayout, createToggleButton(
+                        componentId,
+                        actualItem.name,
+                        actualItem.textOn,
+                        actualItem.textOff,
+                        isChecked,
+                        onChangeListener
+                    ))
+
+                elseif itemType == "seekbar" or itemType == "kittyseekbar" then
+                    local withCheckbox = actualItem.withCheckbox ~= false -- default true
+                    local rtValue = actualItem.rt_value == true -- default false
+                    local componentId = "component_" .. menuType .. "_" .. i
+                    local checkboxId = componentId .. "_checkbox"
+                    local seekbarId = componentId .. "_seekbar"
+                    local progressTextId = componentId .. "_progress"
+                    local itemName = actualItem.name or "Unknown Seekbar"
+                    local itemTypeLabel = itemType
+
+                    local controlLayout = {
+                        LinearLayout;
+                        orientation = "horizontal";
+                        layout_width = "match_parent";
+                        layout_height = "wrap_content";
+                    }
+
+                    local textLayout = {
+                        LinearLayout;
+                        orientation = "vertical";
+                        layout_width = "0dp";
+                        layout_weight = 1;
+                        layout_height = "wrap_content";
+                        layout_marginStart = "2.5dp";
+                        layout_marginEnd = "2.5dp";
+                        layout_gravity = "center_vertical";
+                    }
+
+                    local mainTextLayout = {
+                        LinearLayout;
+                        orientation = "horizontal";
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                        layout_gravity = "center_vertical";
+                    }
+
+                    -- Load saved values
+                    local minValue = actualItem.min or 0
+                    local maxValue = actualItem.max or 100
+                    local defaultProgress = actualItem.progress or minValue
+                    local savedProgress = savePref and readSavedPreference(generatePrefKey(menuType, i) .. "_progress", defaultProgress) or defaultProgress
+                    local initialProgress = math.max(minValue, math.min(maxValue, savedProgress))
+                    
+                    local defaultCheckboxState = actualItem.isChecked or false
+                    local savedCheckboxState = savePref and readSavedPreference(generatePrefKey(menuType, i) .. "_checkbox", defaultCheckboxState) or defaultCheckboxState
+                    
+                    -- Untuk Android SeekBar, kita perlu menggunakan offset karena SeekBar selalu mulai dari 0
+                    local seekbarMax = maxValue - minValue  -- Range seekbar (contoh: 700-280=420)
+                    local seekbarProgress = initialProgress - minValue  -- Progress relatif (contoh: 400-280=120)
+                    
+                    local progressLabel = itemTypeLabel == "kittyseekbar"
+                        and getKittyLabel(actualItem, initialProgress)
+                        or tostring(initialProgress)
+
+                    table.insert(mainTextLayout, createTextView(componentId .. "_label", itemName .. ": ", actualItem.textColor, actualItem.marginStart, actualItem.marginEnd))
+                    table.insert(mainTextLayout, {
+                        TextView;
+                        id = progressTextId;
+                        text = progressLabel;
+                        textSize = "10sp";
+                        textColor = color_accent1 or text_color;
+                        layout_width = "wrap_content";
+                        layout_height = "wrap_content";
+                    })
+
+                    table.insert(textLayout, mainTextLayout)
+
+                    if actualItem.sub_text then
+                        table.insert(textLayout, createSubTextView(componentId, actualItem.sub_text))
+                    end
+
+                    if withCheckbox then
+                        local onCheckboxChange = function(view, isChecked)
+                            local seekbar = _G[seekbarId]
+                            if seekbar then seekbar.setEnabled(isChecked) end
+                            local runnable = {
+                                run = function()
+                                    local currentProgress = seekbar and (seekbar.getProgress() + minValue) or initialProgress
+                                    pcall(itemAction, {text = itemName, value = currentProgress}, isChecked, currentProgress)
+                                    -- Save checkbox state
+                                    if savePref then
+                                        savePreference(generatePrefKey(menuType, i) .. "_checkbox", isChecked)
+                                    end
+                                end,
+                            }
+                            rx.b(runnable)
+                        end
+                        table.insert(controlLayout, createCheckbox(checkboxId, savedCheckboxState, onCheckboxChange))
+                        table.insert(controlLayout, textLayout)
+                    else
+                        table.insert(controlLayout, textLayout)
+                    end
+
+                    local mainLayout = {
+                        LinearLayout;
+                        orientation = "vertical";
+                        layout_width = "match_parent";
+                        layout_height = "wrap_content";
+                        padding = "4.1dp";
+                        controlLayout;
+                    }
+
+                    local onSeekBarChange = {
+                        onStartTrackingTouch = function() end,
+                        onStopTrackingTouch = function(seekbar)
+                            local progress = seekbar.getProgress()
+                            -- Konversi progress seekbar (0-range) ke nilai sebenarnya (min-max)
+                            local actualValue = progress + minValue
+                            
+                            local label = _G[progressTextId]
+                            if label then
+                                label.setText(itemTypeLabel == "kittyseekbar" and getKittyLabel(actualItem, actualValue) or tostring(actualValue))
+                            end
+                            seekbar.getProgressDrawable().setColorFilter(checkbox_color_on, android.graphics.PorterDuff.Mode.SRC_IN)
+                            seekbar.getThumb().setColorFilter(checkbox_color_on, android.graphics.PorterDuff.Mode.SRC_IN)
+                            if not rtValue then
+                                local runnable = {
+                                    run = function()
+                                        pcall(itemAction, {text = itemName, value = actualValue}, true, actualValue)
+                                        -- Save seekbar progress
+                                        if savePref then
+                                            savePreference(generatePrefKey(menuType, i) .. "_progress", actualValue)
+                                        end
+                                    end,
+                                }
+                                rx.b(runnable)
+                            end
+                        end,
+                        onProgressChanged = function(seekbar, progress, fromUser)
+                            -- Konversi progress seekbar (0-range) ke nilai sebenarnya (min-max)
+                            local actualValue = progress + minValue
+                            
+                            local label = _G[progressTextId]
+                            if label then
+                                label.setText(itemTypeLabel == "kittyseekbar" and getKittyLabel(actualItem, actualValue) or tostring(actualValue))
+                            end
+                            if rtValue and fromUser then
+                                local runnable = {
+                                    run = function()
+                                        pcall(itemAction, {text = itemName, value = actualValue}, true, actualValue)
+                                        -- Save seekbar progress for real-time updates
+                                        if savePref then
+                                            savePreference(generatePrefKey(menuType, i) .. "_progress", actualValue)
+                                        end
+                                    end,
+                                }
+                                rx.b(runnable)
+                            end
+                        end
+                    }
+
+                    table.insert(mainLayout, createSeekBar(
+                        seekbarId,
+                        0, -- SeekBar selalu mulai dari 0
+                        seekbarMax, -- Maksimum berdasarkan range (max - min)
+                        seekbarProgress, -- Progress relatif dari minimum
+                        onSeekBarChange
+                    ))
+
+                    local layoutView = loadlayout(mainLayout)
+                    func.addView(layoutView)
+
+                    local seekbar = _G[seekbarId]
+                    if seekbar then
+                        seekbar.setProgress(seekbarProgress) -- Set progress relatif
+
+                        -- Set enabled berdasarkan withCheckbox dan saved state
+                        if withCheckbox then
+                            seekbar.setEnabled(savedCheckboxState)
+                        else
+                            seekbar.setEnabled(true)
+                        end
+
+                        -- Pastikan warnanya tetap di-set
+                        seekbar.getProgressDrawable().setColorFilter(checkbox_color_on, android.graphics.PorterDuff.Mode.SRC_IN)
+                        seekbar.getThumb().setColorFilter(checkbox_color_on, android.graphics.PorterDuff.Mode.SRC_IN)
+                    end
+
+                    if withCheckbox then
+                        local checkbox = _G[checkboxId]
+                        if checkbox then 
+                            applyCheckboxStyling(checkbox, savedCheckboxState)
+                        end
+                        
+                        -- Execute script if checkbox is checked on load
+                        if savedCheckboxState and itemAction then
+                            executeScriptOnLoad(itemAction, itemName, savedCheckboxState, i, nil, initialProgress)
+                        end
+                    else
+                        -- For seekbar without checkbox, always execute if there's an action
+                        if itemAction then
+                            executeScriptOnLoad(itemAction, itemName, true, i, nil, initialProgress)
+                        end
+                    end
+                end
+
+                if itemType ~= "seekbar" and itemType ~= "kittyseekbar" then
+                    local layoutView = loadlayout(mainLayout)
+                    func.addView(layoutView)
+                end
+
+                -- Post-processing for different item types
+                if itemType == "text" then
+                    local textView = textId and _G[textId] or nil
+                    local subTextView = textId and _G[textId .. "_sub"] or nil
+                    if textView then
+                        enableMarquee(textView, itemName)
+                    end
+                    if subTextView then
+                        enableMarquee(subTextView, actualItem.sub_text)
+                    end
+                end
+
+                if itemType == "radio" then
+                    local textView = textId and _G[textId] or nil
+                    local subTextView = textId and _G[textId .. "_sub"] or nil
+                    if textView then
+                        enableMarquee(textView, itemName)
+                    end
+                    if subTextView then
+                        enableMarquee(subTextView, actualItem.sub_text)
+                    end
+                    
+                    -- Execute script for the initially selected radio button on load
+                    local items = actualItem.items or {}
+                    local defaultSelected = actualItem.selected or 1
+                    local savedSelected = savePref and readSavedPreference(generatePrefKey(menuType, i), defaultSelected) or defaultSelected
+                    for i = 1, #items do
+                        local radioId = componentId .. "_radio_" .. i
+                        local radioView = _G[radioId]
+                        if radioView then
+                            applyRadioButtonStyling(radioView, radioView.isChecked())
+                        end
+                    end
+                    if itemAction and savedSelected >= 1 and savedSelected <= #items then
+                        executeScriptOnLoad(itemAction, itemName, savedSelected, i, nil, savedSelected)
+                    end
+                end
+
+                if itemType == "button" then
+                    local view = componentId and _G[componentId] or nil
+                    if view then
+                        view.setAllCaps(false)
+                        view.setBackground(getShapeBackground(button_color, 16, 1.5, button_stroke_color))
+                    end
+                end
+
+                if itemType == "togglebutton" then
+                    local view = componentId and _G[componentId] or nil
+                    if view then
+                        view.setAllCaps(false)
+                        view.setBackground(getShapeBackground(button_color, 16, 1.5, button_stroke_color))
+                    end
+                    
+                    -- Execute script if toggle button is checked on load
+                    if isChecked and itemAction then
+                        executeScriptOnLoad(itemAction, itemName, isChecked, i)
+                    end
+                end
+
+                if itemType == "switch" or itemType == "checkbox" then
+                    local textView = textId and _G[textId] or nil
+                    local subTextView = textId and _G[textId .. "_sub"] or nil
+                    if textView then
+                        enableMarquee(textView, itemName)
+                        makeTextClickable(textView, componentId, itemType)
+                    end
+                    if subTextView then
+                        enableMarquee(subTextView, actualItem.sub_text)
+                        makeTextClickable(subTextView, componentId, itemType)
+                    end
+                    if itemType == "checkbox" then
+                        local checkboxView = _G[componentId]
+                        if checkboxView then
+                            applyCheckboxStyling(checkboxView, isChecked)
+                        end
+                    end
+                    
+                    -- Execute script if checkbox/switch is checked on load
+                    if isChecked and itemAction then
+                        executeScriptOnLoad(itemAction, itemName, isChecked, i)
+                    end
+                end
+
+                -- Post-processing khusus untuk seekbar/kittyseekbar
+                if itemType == "seekbar" or itemType == "kittyseekbar" then
+                    local withCheckbox = actualItem.withCheckbox ~= false
+                    local textView = textId and _G[textId] or nil
+                    local subTextView = textId and _G[textId .. "_sub"] or nil
+                    
+                    if withCheckbox then
+                        local checkboxId = componentId .. "_checkbox"
+                        if textView then
+                            enableMarquee(textView, itemName)
+                            makeTextClickable(textView, checkboxId, "checkbox")
+                        end
+                        if subTextView then
+                            enableMarquee(subTextView, actualItem.sub_text)
+                            makeTextClickable(subTextView, checkboxId, "checkbox")
+                        end
+                    else
+                        if textView then
+                            enableMarquee(textView, itemName)
+                        end
+                        if subTextView then
+                            enableMarquee(subTextView, actualItem.sub_text)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    createLayout(menuItems, nil)
+end
+
+
+
+
+CreateMenu(
+    tab1, 
+    PageLayout_1, 
+    "1", 
+    {
+        {
+        {
+            name = "Long Range Attack",
+            sub_text = "Don't enable it during multiplayer, it's very risky.", 
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_long_range_atk)
+                    rc(o_range_skill)
+                    asv(o_long_range_atk, float, 100)
+                    asv(o_range_skill, bool, false)
+                    log(v.text .. ": on")
+                else
+                    og(o_long_range_atk)
+                    og(o_range_skill)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "God Mode",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_godmode)
+                    asv(o_godmode, bool, 1)
+                    log(v.text .. ": on")
+                else
+                    og(o_godmode)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "Always Critical",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_p_crit_rate)
+                    rc(o_m_crit_rate)
+                    asv(o_p_crit_rate, bool, 1)
+                    asv(o_m_crit_rate, bool, 1)
+                    log(v.text .. ": on")
+                else
+                    og(o_p_crit_rate)
+                    og(o_m_crit_rate)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        },
+        
+        
+        {
+        {
+            name = "Ailment Res. 100&percnt;",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_ailment_res)
+                    asv(o_ailment_res, int, 100)
+                    log(v.text .. ": on")
+                else
+                    og(o_ailment_res)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "Unlimited Buff",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_unbuff)
+                    msv(o_unbuff, 4, -698416192)
+                    msv(o_unbuff + 0x4, 4, -50308118)
+                    log(v.text .. ": on")
+                else
+                    og(o_unbuff)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "Fast Run",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_movement_speed)
+                    msv(o_movement_speed, 4, '00D0251Er')
+                    msv(o_movement_speed + 0x4, 4, 'C0035FD6r')
+                    log(v.text .. ": on")
+                else
+                    og(o_movement_speed)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        },
+        
+        {
+            name = "Max Stability",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_stability)
+                    msv(o_stability, 4, 1384123520)
+                    msv(o_stability + 0x4, 4, v_ret)
+                    log(v.text .. ": on")
+                else
+                    og(o_stability)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+       
+        {
+            name = "ASPD",
+            sub_text = "Recommend value: 1200-2000",
+            type = "seekbar",
+            min = 0,
+            max = 10000,
+            progress = 1400,
+            checked = false, -- Start unchecked, seekbar will be disabled
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_atknotime)
+                    asv(o_atknotime, int, v.value)
+                    log(v.text .. " set to: " .. tostring(v.value))
+                else
+                    og(o_atknotime)
+                    log(v.text .. " set to default")
+                end
+            end
+        },
+        {
+            name = "CSPD",
+            sub_text = "If you're having trouble casting, just turn it off.",
+            type = "seekbar",
+            min = 0,
+            max = 10000,
+            progress = 2000,
+            checked = false, -- Start unchecked, seekbar will be disabled
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_castnotime)
+                    asv(o_castnotime, int, v.value)
+                    log(v.text .. " set to: " .. tostring(v.value))
+                else
+                    og(o_castnotime)
+                    log(v.text .. " set to default")
+                end
+            end
+        },
+        {
+            name = "Main Element",
+            sub_text = "Earth > Wind > Water > Fire",
+            marginStart = "8dp",
+            type = "radio",
+            selected = 1,
+            lines = 3,
+            orientation = "horizontal",
+            items = { "off", "neutral", "earth", "wind", "water", "fire", "light", "dark" },
+            action = function(v, selected)
+                rc(o_mele)
+                if selected == 1 then
+                    og(o_mele)
+                elseif selected == 2 then
+                    msv(o_mele, 4, -763363104)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Neutral")
+                elseif selected == 3 then
+                    msv(o_mele, 4, -763363200)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Earth")
+                elseif selected == 4 then
+                    msv(o_mele, 4, -763363232)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Wind")
+                elseif selected == 5 then
+                    msv(o_mele, 4, -763363264)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Water")
+                elseif selected == 6 then
+                    msv(o_mele, 4, -763363296)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Fire")
+                elseif selected == 7 then
+                    msv(o_mele, 4, -763363168)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Light")
+                elseif selected == 8 then
+                    msv(o_mele, 4, -763363136)
+                    msv(o_mele + 0x4, 4, -698416192)
+                    log("Set element to Dark")
+                end
+            end
+        },
+        {
+            name = "Sub Element",
+            sub_text = "Earth > Wind > Water > Fire",
+            marginStart = "8dp",
+            type = "radio",
+            selected = 1,
+            lines = 3,
+            orientation = "horizontal",
+            items = { "off", "neutral", "earth", "wind", "water", "fire", "light", "dark" },
+            action = function(v, selected)
+                rc(o_sele)
+                if selected == 1 then
+                    og(o_sele)
+                elseif selected == 2 then
+                    msv(o_sele, 4, -763363104)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Neutral")
+                elseif selected == 3 then
+                    msv(o_sele, 4, -763363200)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Earth")
+                elseif selected == 4 then
+                    msv(o_sele, 4, -763363232)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Wind")
+                elseif selected == 5 then
+                    msv(o_sele, 4, -763363264)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Water")
+                elseif selected == 6 then
+                    msv(o_sele, 4, -763363296)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Fire")
+                elseif selected == 7 then
+                    msv(o_sele, 4, -763363168)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Light")
+                elseif selected == 8 then
+                    msv(o_sele, 4, -763363136)
+                    msv(o_sele + 0x4, 4, -698416192)
+                    log("Set element to Dark")
+                end
+            end
+        },
+    }
+)
+
+CreateMenu(
+    tab2, 
+    PageLayout_2, 
+    "2", 
+    {
+        {
+        {
+            name = "Enemy No Flee",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_mobnoflee)
+                    msv(o_mobnoflee, 4, 1385223136)
+                    msv(o_mobnoflee + 0x4, 4, 1923088416)
+                    msv(o_mobnoflee + 0x8, 4, v_ret)
+                    log(v.text .. ": on")
+                else
+                    og(o_mobnoflee)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "Enemy No Invincible",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_mobnoinvicible)
+                    asv(o_mobnoinvicible, bool, 0)
+                    log(v.text .. ": on")
+                else
+                    og(o_mobnoinvicible)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        },
+        
+        
+        {
+        {
+            name = "Enemy No Eva & Guard",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_mobnoevation)
+                    asv(o_mobnoevation, bool, 0)
+                    log(v.text .. ": on")
+                else
+                    og(o_mobnoevation)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "Enemy No Move",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_mobnomove)
+                    asv(o_mobnomove, bool, 0)
+                    log(v.text .. ": on")
+                else
+                    og(o_mobnomove)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        },
+        
+    }
+)
+
+-- QUEST MENU
+CreateMenu(
+    tab3, 
+    PageLayout_3, 
+    "3", 
+    {
+        {
+            name = "Do not activate any features while fighting a boss in multiplayer. ",
+            type = "text",
+        },
+        {
+        {
+            name = "Auto Skip Quest Dialog & Scene",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_autoskip1)
+                    rc(o_autoskip2)
+                    msv(o_autoskip1 + 0x22C, 4, 1384120456)
+                    msv(o_autoskip1 + 0x22C + 0x4, 4, 956516968)
+                    msv(o_autoskip2 + 0x78, 4, v_nop);
+                    msv(o_autoskip2 + 0x78 + 0x8, 4, 1384120456)
+                    msv(o_autoskip2 + 0x78 + 0x10, 4, 956517000)
+                    log("Auto Skip Quest: on") 
+                else
+                    msv(o_autoskip1 + 0x22C, 4, 960711272)
+                    msv(o_autoskip1 + 0x22C + 0x4, 4, 872415336)
+                    msv(o_autoskip2 + 0x78, 4, 922748768);
+                    msv(o_autoskip2 + 0x78 + 0x8, 4, 960711304)
+                    msv(o_autoskip2 + 0x78 + 0x10, 4, 872415336)
+                    log("Auto Skip Quest: off") 
+                end
+            end
+        },
+        {
+            name = "MQ No Item",
+            sub_text = "Turn this off if the mission fails.",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_mqnoitem1)
+                    rc(o_mqnoitem2)
+                    msv(o_mqnoitem1, 4, -763363328)
+                    msv(o_mqnoitem1 + 0x4, 4, -698416192)
+                    msv(o_mqnoitem2, 4, -763363328)
+                    msv(o_mqnoitem2 + 0x4, 4, -698416192)
+                    log("Skip Mob & MQ No Item: on")
+                else
+                    og(o_mqnoitem1)
+                    og(o_mqnoitem2)
+                    log("Skip Mob & MQ No Item: off")
+                end
+            end
+        },
+        },
+        
+        {
+        {
+            name = "Skip Boss Battle",
+            sub_text = "Turn this off if the mission fails.",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_skipboss)
+                    asv(o_skipboss, bool, 1)
+                    log(v.text .. ": on")
+                else
+                    og(o_skipboss)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        {
+            name = "Skip Mob Battle",
+            sub_text = "Turn this off if the mission fails.",
+            type = "checkbox",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_skipmob1)
+                    rc(o_skipmob2)
+                    msv(o_skipmob1, 4, -763363328)
+                    msv(o_skipmob1 + 0x4, 4, -698416192)
+                    msv(o_skipmob2, 4, -763363328)
+                    msv(o_skipmob2 + 0x4, 4, -698416192)
+                    log("Skip Mob Battle")
+                else
+                    og(o_skipmob1)
+                    og(o_skipmob2)
+                    log("Skip Mob Battle")
+                end
+            end
+        },
+        },
+        
+        
+        
+        
+    }
+)
+
+CreateMenu(
+    tab4, 
+    PageLayout_4, 
+    "4", 
+    {
+        {
+            name = "If that doesn't work, go back to town and restart the app.",
+            type = "text",
+        },
+        {
+            name = "Wallhack",
+            type = "togglebutton",
+            textOn = "Wallhack",
+            textOff = "Wallhack",
+            action = function(v, isChecked, index)
+                if isChecked then
+                    setWallHack(true)
+                    log(v.text .. ": on")
+                else
+                    setWallHack(false)
+                    log(v.text .. ": off")
+                end
+            end
+        },
+        
+        {
+            name = "Search Address",
+            type = "button",
+            action = function(v, clicked, index)
+                local dott = "."
+                local maxAttempts = 5
+
+                for i = 1, maxAttempts do
+                    if dott == "." then
+                    log("Searching Address 🔍 " .. dott)
+                    else log(dott) end
+
+                    getWallHack()
+                    local wh1 = getAddress("wh1")
+                    local wh2 = getAddress("wh2")
+
+                    if wh1 and wh2 then
+                        log("Addresses found: wh1 = " .. tostring(wh1) .. ", wh2 = " .. tostring(wh2))
+                        return wh1, wh2
+                    end
+
+                    dott = dott .. "."
+                    gg.sleep(1) -- Adjust or remove based on environment
+                end
+
+                log("Error: Could not find addresses.")
+            end
+        }
+    }
+)
+
+CreateMenu(
+    tab5, 
+    PageLayout_5, 
+    "5", 
+    {
+        {
+            name = "Attack",
+            sub_text = "Recommended value: 0-3000",
+            type = "seekbar",
+            min = 0,
+            max = 10000,
+            progress = 500,
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_eqattack)
+                    asv(o_eqattack, int, v.value)
+                    log(v.text .. " set to: " .. tostring(v.value))
+                else
+                    og(o_eqattack)
+                    log(v.text .. " set to default")
+                end
+            end
+        },
+        {
+            name = "CRIT Damage",
+            type = "seekbar",
+            min = 0,
+            max = 350,
+            progress = 50,
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_p_cdm)
+                    rc(o_m_cdm)
+                    asv(o_p_cdm, int, v.value)
+                    asv(o_m_cdm, int, v.value)
+                    log(v.text .. " set to: " .. tostring(v.value))
+                else
+                    og(o_p_cdm)
+                    og(o_m_cdm)
+                    log(v.text .. " set to default")
+                end
+            end
+        }
+    }
+)
+
+CreateMenu(
+    tab6, 
+    PageLayout_6, 
+    "6", 
+    {
+        {
+            name = "Def & Mdef",
+            type = "seekbar",
+            min = 0,
+            max = 99999,
+            progress = 1000,
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_def)
+                    rc(o_mdef)
+                    asv(o_def, int, v.value)
+                    asv(o_mdef, int, v.value)
+                    log(v.text .. " set to: " .. tostring(v.value))
+                else
+                    og(o_def)
+                    og(o_mdef)
+                    log(v.text .. " set to default")
+                end
+            end
+        },
+        {
+            name = "Physic & Magic Frac",
+            type = "seekbar",
+            min = 0,
+            max = 500,
+            progress = 100,
+            action = function(v, isChecked, index)
+                if isChecked then
+                    rc(o_def_fact)
+                    rc(o_mdef_fact)
+                    asv(o_def_fact, int, v.value)
+                    asv(o_mdef_fact, int, v.value)
+                    log(v.text .. " set to: " .. tostring(v.value))
+                else
+                    og(o_def_fact)
+                    og(o_mdef_fact)
+                    log(v.text .. " set to default")
+                end
+            end
+        }
+    }
+)
+
+
+
+CreateMenu(
+    tab7,
+    PageLayout_7,
+    "7",
+    {
+        {
+            name = "Save Preference",
+            type = "checkbox",
+            save_pref = false,
+            isChecked = setting_save_preference,
+            action = function(v, isChecked, index)
+                if isChecked then
+                    setting_save_preference = true
+                    writeFile(setting_pref_path, "true")
+                else
+                    setting_save_preference = false
+                    writeFile(setting_pref_path, "false")
+                    os.execute("su -c rm -rf "..MenuPath)
+                end
+            end
+        },
+    }
+)
+
+
+mainLayoutParams.x = Point_posX.getInt(Point)
+mainLayoutParams.y = Point_posY.getInt(Point)
+window.addView(xfq, mainLayoutParams)
+if (Point_mVanishingTime < 0) then
+    Tools.a(suspended_ball, 255.0)
+else 
+    Point_postCallback(true)
+end
+end
+
+toast.white("Menu is ready")
+
+Lock.Ui(invoke)
